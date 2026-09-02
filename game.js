@@ -1,7 +1,7 @@
-**
+/**
  * AETHELGARD: ECHOES OF SOLTIA
  * Motor de Juego Principal (game.js)
- * Compilación completa con Baltasar, Fix de Pesca, Inventario Moderno, Esc/X y Y-Sorting
+ * Versión: Modernización Visual (Sprites + Procedural Fallback) & Fix de Inventario / Requisitos
  */
 
 (function() {
@@ -127,6 +127,20 @@
     silent_one: { name: 'El Innominado', hp: 200, res: 100, str: 20, dex: 20, vit: 20, int: 20, resType: 'Trascendencia', desc: 'Aquel que no rindió culto a ningún dios.' }
   };
 
+  // Catálogo base de ítems para saneamiento y requisitos
+  const ITEM_TEMPLATES = {
+    rusty_blade: { name: 'Espada Mellada', category: 'equip', type: 'weapon', atk: 6, req: { str: 6, level: 1 } },
+    leather_vest: { name: 'Chaleco de Cuero', category: 'equip', type: 'armor', def: 4, req: { vit: 6, level: 1 } },
+    void_relic: { name: 'Amuleto de las Profundidades', category: 'equip', type: 'accessory', desc: 'Resuena con el rumor del océano abisal.', req: { int: 10, level: 1 } },
+    apple: { name: 'Manzana Silvestre', category: 'consumable', type: 'heal', value: 25 },
+    trout: { name: 'Carpa Escamada', category: 'consumable', type: 'heal', value: 35 },
+    old_boot: { name: 'Bota Empapada', category: 'material', type: 'material' },
+    iron_ore: { name: 'Mineral Puro', category: 'material', type: 'material' },
+    herb: { name: 'Hongo Sombrío', category: 'material', type: 'material' },
+    iron_bar: { name: 'Lingote de Hierro', category: 'material', type: 'material' },
+    old_coin: { name: 'Moneda Antigua', category: 'material', type: 'valuable' }
+  };
+
   // ==========================================
   // 4. MAPAS DEL MUNDO
   // ==========================================
@@ -145,9 +159,9 @@
         { x: 420, y: 80, w: 120, h: 80 }
       ],
       interactives: [
-        { id: 'ignacio', type: 'npc', name: 'Ignacio el Herrero', x: 170, y: 170, w: 28, h: 28, color: '#e67e22' },
-        { id: 'silas', type: 'npc', name: 'Silas el Erudito', x: 280, y: 100, w: 28, h: 28, color: '#9b59b6' },
-        { id: 'mael', type: 'npc', name: 'Mael el Pescador', x: 500, y: 360, w: 28, h: 28, color: '#2980b9' },
+        { id: 'ignacio', type: 'npc', name: 'Ignacio el Herrero', role: 'blacksmith', x: 170, y: 170, w: 26, h: 30, color: '#e67e22' },
+        { id: 'silas', type: 'npc', name: 'Silas el Erudito', role: 'mage', x: 280, y: 100, w: 26, h: 30, color: '#9b59b6' },
+        { id: 'mael', type: 'npc', name: 'Mael el Pescador', role: 'fisherman', x: 500, y: 360, w: 26, h: 30, color: '#2980b9' },
         { id: 'stash_chest', type: 'stash', name: 'Baúl Común', x: 70, y: 60, w: 26, h: 26, color: '#f39c12' },
         { id: 'water_dock', type: 'fishing_spot', name: 'Estanque del Bastión', x: 540, y: 380, w: 40, h: 40, color: '#3498db' },
         { id: 'bounty_board', type: 'bounty', name: 'Tablón de Contratos', x: 390, y: 160, w: 24, h: 32, color: '#d35400' }
@@ -220,7 +234,19 @@
       this.canvas = document.getElementById('gameCanvas');
       this.ctx = this.canvas.getContext('2d');
 
-      this.state = 'PLAYING'; // PLAYING, DIALOG, FISHING, STASH, PAUSE
+      // Sistema de Sprites
+      this.spriteSheet = new Image();
+      this.spriteSheetLoaded = false;
+      this.spriteSheet.src = 'sprites.png';
+      this.spriteSheet.onload = () => {
+        this.spriteSheetLoaded = true;
+        this.toast('¡Hoja de Sprites (sprites.png) cargada!');
+      };
+      this.spriteSheet.onerror = () => {
+        this.spriteSheetLoaded = false;
+      };
+
+      this.state = 'PLAYING';
       this.currentMapId = 'bastion';
       this.currentMap = MAPS.bastion;
 
@@ -234,10 +260,7 @@
       this.particles = [];
       this.floatTexts = [];
 
-      // Filtro activo de inventario
       this.currentInventoryFilter = 'all';
-
-      // Anti-spam para tecla E
       this.keyEProcessed = false;
 
       this.player = {
@@ -246,7 +269,7 @@
         x: 320,
         y: 240,
         w: 22,
-        h: 22,
+        h: 28,
         speed: 2.8,
         facing: 'down',
         level: 1,
@@ -277,18 +300,16 @@
         masteryWeapon: 0,
         activeTitle: 'El Recién Llegado',
 
-        // Mochila
         inventory: [
-          { uid: 1, id: 'rusty_blade', name: 'Espada Mellada', category: 'equip', type: 'weapon', atk: 6, plus: 0 },
-          { uid: 2, id: 'leather_vest', name: 'Chaleco de Cuero', category: 'equip', type: 'armor', def: 4 },
+          { uid: 1, id: 'rusty_blade', name: 'Espada Mellada', category: 'equip', type: 'weapon', atk: 6, plus: 0, req: { str: 6, level: 1 } },
+          { uid: 2, id: 'leather_vest', name: 'Chaleco de Cuero', category: 'equip', type: 'armor', def: 4, req: { vit: 6, level: 1 } },
           { uid: 3, id: 'apple', name: 'Manzana Silvestre', category: 'consumable', type: 'heal', value: 25, count: 2 },
-          { uid: 4, id: 'iron_ore', name: 'Mineral Puro', category: 'material', type: 'ore', count: 1 }
+          { uid: 4, id: 'iron_ore', name: 'Mineral Puro', category: 'material', type: 'material', count: 1 }
         ],
 
-        // Slots de equipo
         equipped: {
-          weapon: { uid: 1, id: 'rusty_blade', name: 'Espada Mellada', category: 'equip', type: 'weapon', atk: 6, plus: 0 },
-          armor: { uid: 2, id: 'leather_vest', name: 'Chaleco de Cuero', category: 'equip', type: 'armor', def: 4 },
+          weapon: null,
+          armor: null,
           accessory: null
         }
       };
@@ -302,39 +323,36 @@
         { id: 'alpha_slime', name: 'Rey de las Babas', target: 'Moco de Ciénaga', count: 3, current: 0, reward: 80, done: false }
       ];
 
-      // Minijuego de pesca
       this.fishingBar = { pos: 50, speed: 2.2, dir: 1, targetMin: 38, targetMax: 62, active: false };
 
       this.keys = {};
       this.initInput();
       this.loadGame();
+      this.sanitizeInventoryData();
       this.updateHUD();
       this.toast(`Temporada: ${CURRENT_SEASON.name}`);
     }
 
     // ==========================================
-    // 6. ENTRADAS (TECLADO / ESCAPE / TÁCTIL)
+    // 6. ENTRADAS Y EVENTOS
     // ==========================================
     initInput() {
       window.addEventListener('keydown', (e) => {
         const k = e.key.toLowerCase();
         sfx.init();
 
-        // Tecla Escape universal para cerrar cualquier menú, baúl o diálogo
         if (e.key === 'Escape') {
           e.preventDefault();
           this.closeAllModals();
           return;
         }
 
-        // Tecla Tab
         if (e.key === 'Tab') {
           e.preventDefault();
           this.togglePauseMenu();
           return;
         }
 
-        // Si estamos pescando: AISLAR ESPACIO para no castear dash
         if (this.state === 'FISHING') {
           if (e.key === ' ' || k === 'e') {
             e.preventDefault();
@@ -343,7 +361,6 @@
           return;
         }
 
-        // Anti-spam en interacción con tecla E
         if (k === 'e') {
           if (!this.keyEProcessed) {
             this.keyEProcessed = true;
@@ -373,13 +390,10 @@
 
       window.addEventListener('keyup', (e) => {
         const k = e.key.toLowerCase();
-        if (k === 'e') {
-          this.keyEProcessed = false;
-        }
+        if (k === 'e') this.keyEProcessed = false;
         this.keys[k] = false;
       });
 
-      // Táctiles
       const bindTouch = (id, key) => {
         const el = document.getElementById(id);
         if (!el) return;
@@ -409,7 +423,6 @@
         else this.handleInteract();
       });
 
-      // Pestañas
       document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -426,16 +439,12 @@
         document.getElementById('pause-menu').classList.add('hidden');
         this.state = 'PLAYING';
       }
-      if (this.state === 'STASH') {
-        this.closeStash();
-      }
-      if (this.state === 'DIALOG') {
-        this.closeDialog();
-      }
+      if (this.state === 'STASH') this.closeStash();
+      if (this.state === 'DIALOG') this.closeDialog();
     }
 
     // ==========================================
-    // 7. BUCLE Y CICLOS
+    // 7. BUCLE PRINCIPAL
     // ==========================================
     start() {
       const loop = () => {
@@ -482,7 +491,7 @@
     }
 
     // ==========================================
-    // 8. COMBATE Y MOVIMIENTO
+    // 8. COMBATE Y FÍSICAS
     // ==========================================
     updatePlayer() {
       const p = this.player;
@@ -706,7 +715,7 @@
     }
 
     // ==========================================
-    // 9. MINIJUEGO DE PESCA AISLADO
+    // 9. MINIJUEGO DE PESCA
     // ==========================================
     startFishing() {
       this.state = 'FISHING';
@@ -737,17 +746,17 @@
 
         const roll = Math.random();
         if (roll < 0.5) {
-          p.inventory.push({ uid: Date.now(), id: 'trout', name: 'Carpa Escamada', category: 'consumable', type: 'heal', value: 35, count: 1 });
+          p.inventory.push({ uid: Date.now() + Math.random(), id: 'trout', name: 'Carpa Escamada', category: 'consumable', type: 'heal', value: 35, count: 1 });
           this.toast('¡Pescaste una Carpa Escamada! (+35 HP)');
         } else if (roll < 0.8) {
-          p.inventory.push({ uid: Date.now(), id: 'old_boot', name: 'Bota Empapada', category: 'material', type: 'material', count: 1 });
+          p.inventory.push({ uid: Date.now() + Math.random(), id: 'old_boot', name: 'Bota Empapada', category: 'material', type: 'material', count: 1 });
           this.toast('Sacaste una Bota Vieja del fondo fangoso.');
         } else if (roll < 0.95) {
           p.gold += 30;
           this.toast('¡Cofre recuperado! +30 de Oro.');
         } else {
           p.secretFishTrophy++;
-          p.inventory.push({ uid: Date.now(), id: 'void_relic', name: 'Amuleto de las Profundidades', category: 'equip', type: 'accessory', desc: 'Resuena con el rumor del océano.' });
+          p.inventory.push({ uid: Date.now() + Math.random(), id: 'void_relic', name: 'Amuleto de las Profundidades', category: 'equip', type: 'accessory', desc: 'Resuena con el rumor del océano.', req: { int: 10, level: 1 } });
           this.toast('¡UN EXTRAÑO BRILLO SURGIÓ DEL AGUA!');
           sfx.secret();
         }
@@ -767,7 +776,7 @@
     }
 
     // ==========================================
-    // 10. BALTASAR EL DESTERRADO Y DIÁLOGOS
+    // 10. INTERACCIONES, BALTASAR Y FORJA
     // ==========================================
     handleInteract() {
       if (this.state === 'DIALOG') {
@@ -794,10 +803,10 @@
 
     handleNPCDialog(npc) {
       if (npc.id === 'baltasar') {
-        this.showDialog('Baltasar el Desterrado', 'El velo entre mundos se desgarra, forastero. Traigo reliquias que la iglesia quemaría en la hoguera. Te costarán una fortuna en oro o tus baratijas más raras.', [
+        this.showDialog('Baltasar el Desterrado', 'El velo entre mundos se desgarra, forastero. Traigo reliquias que la iglesia quemaría en la hoguera.', [
           { label: 'Comprar Elixir del Leteo (250 Oro)', action: () => this.buyBaltasarGold('leteo', 250) },
-          { label: 'Trueque: Amuleto por Piedra de Afilar Sombría', action: () => this.barterBaltasar('void_relic', 'sharp_stone') },
-          { label: 'Trueque: Bota Vieja + Hongo por Poción Mayor', action: () => this.barterBaltasarBoot() },
+          { label: 'Trueque: Amuleto por Afilado Sagrado (+1)', action: () => this.barterBaltasar('void_relic') },
+          { label: 'Trueque: Bota Vieja + Hongo por Pociones', action: () => this.barterBaltasarBoot() },
           { label: 'Marcharse', action: () => this.closeDialog() }
         ]);
       } else if (npc.id === 'ignacio') {
@@ -807,7 +816,7 @@
           { label: 'Volver', action: () => this.closeDialog() }
         ]);
       } else if (npc.id === 'silas') {
-        this.showDialog('Silas el Erudito', 'El Éter no es magia, forastero; es la herida sangrante del mundo. Cuida tus pasos en el fango.');
+        this.showDialog('Silas el Erudito', 'El Éter no es magia, forastero; es la herida sangrante del mundo.');
       } else if (npc.id === 'mael') {
         this.showDialog('Mael el Pescador', 'El agua no devuelve lo que traga a menos que sepas escuchar su silencio.');
       }
@@ -823,13 +832,13 @@
         this.player.unallocatedStats += (this.player.level - 1) * 3;
         this.player.stats = { str: 8, dex: 8, vit: 8, int: 8 };
         sfx.secret();
-        this.toast('¡Bebiste el Elixir del Leteo! Tus atributos fueron purificados.');
+        this.toast('¡Bebiste el Elixir del Leteo! Atributos purificados.');
       }
       this.closeDialog();
       this.updateHUD();
     }
 
-    barterBaltasar(requiredId, rewardKey) {
+    barterBaltasar(requiredId) {
       const idx = this.player.inventory.findIndex(it => it.id === requiredId);
       if (idx === -1) {
         this.toast('Baltasar rechaza el trato: No tienes el objeto solicitado.');
@@ -838,7 +847,7 @@
       this.player.inventory.splice(idx, 1);
       this.player.weaponPlus = Math.min(7, this.player.weaponPlus + 1);
       sfx.forgeSuccess();
-      this.toast('¡Baltasar tomó la reliquia y afiló tu filo sin riesgo alguno!');
+      this.toast('¡Baltasar tomó la reliquia y mejoró tu filo sin riesgo!');
       this.closeDialog();
       this.updateHUD();
     }
@@ -854,7 +863,7 @@
       this.player.inventory.splice(Math.min(bootIdx, herbIdx), 1);
       this.player.potions += 3;
       sfx.potion();
-      this.toast('¡Baltasar destiló los desechos en 3 Pociones Carmesí!');
+      this.toast('¡Baltasar destiló 3 Pociones Carmesí!');
       this.closeDialog();
       this.updateHUD();
     }
@@ -902,7 +911,7 @@
       sfx.hit();
       this.spawnParticle(node.x + 12, node.y + 12, '#bdc3c7', 6);
       if (node.hp <= 0) {
-        this.player.inventory.push({ uid: Date.now(), id: 'iron_ore', name: 'Mineral Puro', category: 'material', type: 'material', count: 1 });
+        this.player.inventory.push({ uid: Date.now() + Math.random(), id: 'iron_ore', name: 'Mineral Puro', category: 'material', type: 'material', count: 1 });
         this.toast('¡Veta extraída por completo!');
         sfx.forgeSuccess();
         const idx = this.currentMap.interactives.indexOf(node);
@@ -912,7 +921,7 @@
     }
 
     gatherNode(node) {
-      this.player.inventory.push({ uid: Date.now(), id: 'herb', name: 'Hongo Sombrío', category: 'material', type: 'material', count: 1 });
+      this.player.inventory.push({ uid: Date.now() + Math.random(), id: 'herb', name: 'Hongo Sombrío', category: 'material', type: 'material', count: 1 });
       this.toast('Cosechaste un Hongo Sombrío.');
       sfx.potion();
       const idx = this.currentMap.interactives.indexOf(node);
@@ -927,8 +936,41 @@
     }
 
     // ==========================================
-    // 11. INVENTARIO RENOVADO (FILTROS, SLOTS, DOBLE CLIC)
+    // 11. GESTOR DE INVENTARIO, REQUISITOS Y SANEAMIENTO
     // ==========================================
+    sanitizeInventoryData() {
+      const sanitizeItem = (it, fallbackUid) => {
+        if (!it) return null;
+        const template = ITEM_TEMPLATES[it.id] || {};
+        it.uid = it.uid || fallbackUid || Math.random();
+        it.category = it.category || template.category || (it.type === 'weapon' || it.type === 'armor' || it.type === 'accessory' ? 'equip' : (it.type === 'heal' ? 'consumable' : 'material'));
+        it.req = it.req || template.req || null;
+        return it;
+      };
+
+      this.player.inventory = (this.player.inventory || []).map((it, idx) => sanitizeItem(it, Date.now() + idx));
+
+      const eq = this.player.equipped || {};
+      if (eq.weapon) eq.weapon = sanitizeItem(eq.weapon, 991);
+      if (eq.armor) eq.armor = sanitizeItem(eq.armor, 992);
+      if (eq.accessory) eq.accessory = sanitizeItem(eq.accessory, 993);
+      this.player.equipped = eq;
+    }
+
+    checkItemRequirements(it) {
+      if (!it.req) return { canEquip: true, missing: [] };
+      const p = this.player;
+      const missing = [];
+
+      if (it.req.str && p.stats.str < it.req.str) missing.push(`Fuerza: ${p.stats.str}/${it.req.str}`);
+      if (it.req.dex && p.stats.dex < it.req.dex) missing.push(`Destreza: ${p.stats.dex}/${it.req.dex}`);
+      if (it.req.vit && p.stats.vit < it.req.vit) missing.push(`Vitalidad: ${p.stats.vit}/${it.req.vit}`);
+      if (it.req.int && p.stats.int < it.req.int) missing.push(`Intelecto: ${p.stats.int}/${it.req.int}`);
+      if (it.req.level && p.level < it.req.level) missing.push(`Nivel: ${p.level}/${it.req.level}`);
+
+      return { canEquip: missing.length === 0, missing };
+    }
+
     setInventoryFilter(filter) {
       this.currentInventoryFilter = filter;
       document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -942,14 +984,13 @@
       if (!grid) return;
       grid.innerHTML = '';
 
-      // Actualizar slots laterales
       const eq = this.player.equipped;
       document.getElementById('slot-weapon').innerText = eq.weapon ? `${eq.weapon.name} (+${this.player.weaponPlus})` : '[Vacío]';
       document.getElementById('slot-armor').innerText = eq.armor ? eq.armor.name : '[Vacío]';
       document.getElementById('slot-accessory').innerText = eq.accessory ? eq.accessory.name : '[Vacío]';
 
-      // Filtrar elementos
       const filtered = this.player.inventory.filter(it => {
+        if (!it) return false;
         if (this.currentInventoryFilter === 'all') return true;
         if (this.currentInventoryFilter === 'equip') return it.category === 'equip';
         if (this.currentInventoryFilter === 'consumable') return it.category === 'consumable';
@@ -972,28 +1013,29 @@
           <span style="color:#888;font-size:9px">${it.count ? `x${it.count}` : it.type}</span>
         `;
 
-        // Click simple: inspeccionar
-        cell.onclick = () => {
-          this.inspectItem(it);
-        };
-
-        // Doble click: equipar directo
-        cell.ondblclick = () => {
-          this.quickEquipItem(it);
-        };
-
+        cell.onclick = () => this.inspectItem(it);
+        cell.ondblclick = () => this.quickEquipItem(it);
         grid.appendChild(cell);
       });
     }
 
     inspectItem(it) {
       const el = document.getElementById('item-inspect');
+      const reqStatus = this.checkItemRequirements(it);
+      let reqHtml = '';
+      if (it.req) {
+        reqHtml = `<div style="font-size:10px;margin:3px 0;color:${reqStatus.canEquip ? '#2ecc71' : '#e74c3c'}">
+          <b>Requisitos:</b> ${reqStatus.missing.length ? reqStatus.missing.join(' | ') : 'Cumplidos'}
+        </div>`;
+      }
+
       el.innerHTML = `
-        <b>${it.name}</b> (${it.type})<br>
+        <b>${it.name}</b> (${it.category || it.type})<br>
         ${it.atk ? `Ataque: +${it.atk + (this.player.weaponPlus * 3)}<br>` : ''}
         ${it.def ? `Defensa: +${it.def}<br>` : ''}
         ${it.value ? `Efecto: Restaura ${it.value} HP<br>` : ''}
         ${it.desc ? `<i>${it.desc}</i><br>` : ''}
+        ${reqHtml}
         <button onclick="game.quickEquipItemByUid(${it.uid})">${it.category === 'equip' ? 'Equipar / Desequipar' : 'Usar'}</button>
       `;
     }
@@ -1006,6 +1048,14 @@
     quickEquipItem(it) {
       const eq = this.player.equipped;
       if (it.category === 'equip') {
+        // Verificar requisitos
+        const check = this.checkItemRequirements(it);
+        if (!check.canEquip) {
+          sfx.forgeFail();
+          this.toast(`No cumples los requisitos: ${check.missing.join(', ')}`);
+          return;
+        }
+
         if (it.type === 'weapon') {
           eq.weapon = (eq.weapon && eq.weapon.uid === it.uid) ? null : it;
           sfx.slash();
@@ -1056,7 +1106,7 @@
     }
 
     // ==========================================
-    // 12. MAPA, SALIDAS Y BALTASAR ERRANTE
+    // 12. MAPA Y SALIDAS
     // ==========================================
     checkExits() {
       const p = this.player;
@@ -1076,19 +1126,18 @@
       this.player.x = spawnX;
       this.player.y = spawnY;
 
-      // Limpiar a Baltasar si existía de mapas anteriores
       this.currentMap.interactives = this.currentMap.interactives.filter(i => i.id !== 'baltasar');
 
-      // Aparición aleatoria de Baltasar el Desterrado (15% en zonas fuera del Bastión)
       if (mapId !== 'bastion' && Math.random() < 0.15) {
         this.currentMap.interactives.push({
           id: 'baltasar',
           type: 'npc',
           name: 'Baltasar el Desterrado',
+          role: 'nomad',
           x: mapId === 'swamp' ? 210 : 340,
           y: mapId === 'swamp' ? 380 : 380,
           w: 28,
-          h: 28,
+          h: 30,
           color: '#8e44ad'
         });
         this.toast('¡Una presencia errante acecha en las sombras!');
@@ -1098,7 +1147,7 @@
     }
 
     // ==========================================
-    // 13. MODALES, BAÚL Y HUD
+    // 13. UI, MODALES Y HUD
     // ==========================================
     showDialog(speaker, text, buttons = null) {
       this.state = 'DIALOG';
@@ -1242,7 +1291,7 @@
     }
 
     // ==========================================
-    // 14. GUARDADO / PERSISTENCIA
+    // 14. PERSISTENCIA
     // ==========================================
     saveGame(manual = false) {
       const saveData = {
@@ -1286,6 +1335,7 @@
         const data = JSON.parse(raw);
         localStorage.setItem('aethelgard_save', JSON.stringify(data));
         this.loadGame();
+        this.sanitizeInventoryData();
         this.updateHUD();
         this.toast('¡Partida restaurada con éxito!');
         this.togglePauseMenu();
@@ -1295,7 +1345,7 @@
     }
 
     // ==========================================
-    // 15. RENDERIZADO VISUAL MODERNO (Y-SORTING, SOMBRAS Y LUZ)
+    // 15. SISTEMA DE SPRITES Y RENDERIZADO VISUAL
     // ==========================================
     render() {
       const ctx = this.ctx;
@@ -1307,11 +1357,11 @@
         ctx.translate(ox, oy);
       }
 
-      // 1. Fondo del mapa
+      // Fondo
       ctx.fillStyle = this.currentMap.bgColor || '#111';
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-      // 2. Muros
+      // Muros
       ctx.fillStyle = '#222b38';
       (this.currentMap.walls || []).forEach(w => {
         ctx.fillRect(w.x, w.y, w.w, w.h);
@@ -1319,7 +1369,7 @@
         ctx.strokeRect(w.x, w.y, w.w, w.h);
       });
 
-      // 3. PIPELINE DE ENTIDADES CON Y-SORTING (Profundidad Visual 2.5D)
+      // Pipeline Y-Sorting
       const renderables = [];
 
       (this.currentMap.interactives || []).forEach(obj => {
@@ -1333,39 +1383,26 @@
       const p = this.player;
       renderables.push({ type: 'player', y: p.y + p.h, data: p });
 
-      // Ordenar por eje Y (quien esté más abajo se dibuja encima)
       renderables.sort((a, b) => a.y - b.y);
 
-      // 4. Dibujar entidades ordenadas
+      // Dibujar entidades
       renderables.forEach(r => {
         if (r.type === 'interactive') {
           const obj = r.data;
           this.drawShadow(ctx, obj.x + obj.w / 2, obj.y + obj.h, obj.w / 2);
-          ctx.fillStyle = obj.color || '#fff';
-          ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-          ctx.strokeStyle = '#000';
-          ctx.strokeRect(obj.x, obj.y, obj.w, obj.h);
-
-          ctx.fillStyle = '#f1c40f';
-          ctx.font = '9px monospace';
-          ctx.textAlign = 'center';
-          ctx.fillText(obj.name, obj.x + obj.w / 2, obj.y - 4);
+          this.drawInteractiveEntity(ctx, obj);
         } else if (r.type === 'enemy') {
           const en = r.data;
           this.drawShadow(ctx, en.x + 12, en.y + 24, 11);
-          ctx.fillStyle = en.color || '#e74c3c';
-          ctx.fillRect(en.x, en.y, 24, 24);
+          this.drawEnemyEntity(ctx, en);
 
           ctx.fillStyle = '#c0392b';
           ctx.fillRect(en.x, en.y - 6, 24, 3);
           ctx.fillStyle = '#2ecc71';
           ctx.fillRect(en.x, en.y - 6, (en.hp / en.maxHp) * 24, 3);
         } else if (r.type === 'player') {
-          this.drawShadow(ctx, p.x + p.w / 2, p.y + p.h, 10);
-          ctx.fillStyle = (p.iFrames > 0 && Math.floor(this.gameTicks / 4) % 2 === 0) ? 'rgba(255,255,255,0.4)' : '#3498db';
-          ctx.fillRect(p.x, p.y, p.w, p.h);
-          ctx.strokeStyle = '#1d6fa5';
-          ctx.strokeRect(p.x, p.y, p.w, p.h);
+          this.drawShadow(ctx, p.x + p.w / 2, p.y + p.h, 11);
+          this.drawPlayerEntity(ctx, p);
 
           if (p.isAttacking) {
             ctx.strokeStyle = '#f1c40f';
@@ -1381,7 +1418,7 @@
         }
       });
 
-      // 5. Partículas y textos flotantes
+      // Partículas y flotantes
       this.particles.forEach(pt => {
         ctx.fillStyle = pt.color;
         ctx.fillRect(pt.x, pt.y, 3, 3);
@@ -1396,11 +1433,9 @@
         ctx.globalAlpha = 1.0;
       });
 
-      // 6. ILUMINACIÓN DINÁMICA NOCTURNA CON RECORTE RADIAL
+      // Iluminación nocturna con halo
       if (this.dayTime > 0.4) {
         const nightAlpha = (this.dayTime - 0.4) * 0.85;
-
-        // Crear lienzo de sombra con linterna alrededor del jugador
         const lightCanvas = document.createElement('canvas');
         lightCanvas.width = CANVAS_WIDTH;
         lightCanvas.height = CANVAS_HEIGHT;
@@ -1409,26 +1444,24 @@
         lctx.fillStyle = `rgba(5, 8, 20, ${nightAlpha})`;
         lctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-        // Recorte de luz radial en torno al jugador
         lctx.globalCompositeOperation = 'destination-out';
-        const radGrad = lctx.createRadialGradient(p.x + p.w / 2, p.y + p.h / 2, 10, p.x + p.w / 2, p.y + p.h / 2, 110);
+        const radGrad = lctx.createRadialGradient(p.x + p.w / 2, p.y + p.h / 2, 10, p.x + p.w / 2, p.y + p.h / 2, 115);
         radGrad.addColorStop(0, 'rgba(0, 0, 0, 1)');
         radGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
         lctx.fillStyle = radGrad;
         lctx.beginPath();
-        lctx.arc(p.x + p.w / 2, p.y + p.h / 2, 110, 0, Math.PI * 2);
+        lctx.arc(p.x + p.w / 2, p.y + p.h / 2, 115, 0, Math.PI * 2);
         lctx.fill();
 
         ctx.drawImage(lightCanvas, 0, 0);
       }
 
-      // Tinte de temporada
       if (CURRENT_SEASON.tint) {
         ctx.fillStyle = CURRENT_SEASON.tint;
         ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
       }
 
-      // Superposición de pesca
+      // Pesca
       if (this.state === 'FISHING') {
         const fb = this.fishingBar;
         ctx.fillStyle = 'rgba(0,0,0,0.75)';
@@ -1456,10 +1489,140 @@
 
     drawShadow(ctx, cx, cy, radius) {
       ctx.save();
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.38)';
       ctx.beginPath();
       ctx.ellipse(cx, cy - 2, radius, radius * 0.45, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
+    }
+
+    // Dibujo del Jugador (Spritesheet o Procedural estilizado)
+    drawPlayerEntity(ctx, p) {
+      if (this.spriteSheetLoaded) {
+        // En sprites.png: Fila 0 para jugador (32x32 por frame)
+        let frameCol = 0;
+        if (p.facing === 'down') frameCol = 0;
+        else if (p.facing === 'up') frameCol = 1;
+        else if (p.facing === 'left') frameCol = 2;
+        else if (p.facing === 'right') frameCol = 3;
+
+        ctx.drawImage(this.spriteSheet, frameCol * 32, 0, 32, 32, p.x - 5, p.y - 4, 32, 32);
+        return;
+      }
+
+      // Fallback Procedural Detallado (Pixel Art procedural con capucha, ojos y manto)
+      ctx.save();
+      const alpha = (p.iFrames > 0 && Math.floor(this.gameTicks / 4) % 2 === 0) ? 0.4 : 1.0;
+      ctx.globalAlpha = alpha;
+
+      // Capa / Manto
+      ctx.fillStyle = '#1e3799';
+      ctx.fillRect(p.x + 2, p.y + 10, p.w - 4, p.h - 10);
+
+      // Túnica / Cota
+      ctx.fillStyle = '#4a69bd';
+      ctx.fillRect(p.x + 4, p.y + 12, p.w - 8, p.h - 14);
+
+      // Cabeza / Capucha
+      ctx.fillStyle = '#0c2461';
+      ctx.fillRect(p.x + 3, p.y, p.w - 6, 12);
+
+      // Rostro sombrío
+      ctx.fillStyle = '#0a0a0f';
+      ctx.fillRect(p.x + 5, p.y + 3, p.w - 10, 6);
+
+      // Ojos brillantes según dirección
+      ctx.fillStyle = p.classKey === 'void_angler' ? '#00d2d3' : '#f8c291';
+      if (p.facing === 'down') {
+        ctx.fillRect(p.x + 6, p.y + 4, 2, 2);
+        ctx.fillRect(p.x + 13, p.y + 4, 2, 2);
+      } else if (p.facing === 'up') {
+        // Mirando arriba no se ven los ojos
+      } else if (p.facing === 'left') {
+        ctx.fillRect(p.x + 5, p.y + 4, 2, 2);
+      } else if (p.facing === 'right') {
+        ctx.fillRect(p.x + 14, p.y + 4, 2, 2);
+      }
+
+      // Detalle del arma enfundada/equipada al lado
+      if (p.equipped.weapon) {
+        ctx.fillStyle = p.weaponPlus > 0 ? '#f1c40f' : '#bdc3c7';
+        if (p.facing === 'left') ctx.fillRect(p.x - 2, p.y + 10, 3, 10);
+        else ctx.fillRect(p.x + p.w - 1, p.y + 10, 3, 10);
+      }
+
+      ctx.restore();
+    }
+
+    // Dibujo de NPCs
+    drawInteractiveEntity(ctx, obj) {
+      if (this.spriteSheetLoaded && obj.type === 'npc') {
+        ctx.drawImage(this.spriteSheet, 0, 32, 32, 32, obj.x - 3, obj.y - 2, 32, 32);
+      } else {
+        ctx.save();
+        if (obj.type === 'npc') {
+          // Túnica
+          ctx.fillStyle = obj.color || '#e67e22';
+          ctx.fillRect(obj.x + 3, obj.y + 8, obj.w - 6, obj.h - 8);
+          // Cabeza
+          ctx.fillStyle = '#dcdde1';
+          ctx.fillRect(obj.x + 5, obj.y, obj.w - 10, 9);
+          // Barba / Detalles según personaje
+          if (obj.id === 'ignacio') {
+            ctx.fillStyle = '#2f3640'; // Mandil
+            ctx.fillRect(obj.x + 7, obj.y + 11, obj.w - 14, 12);
+          } else if (obj.id === 'baltasar') {
+            ctx.fillStyle = '#6c5ce7'; // Capucha violeta profunda
+            ctx.fillRect(obj.x + 3, obj.y, obj.w - 6, 8);
+          }
+        } else {
+          // Cofre, menas o fuentes
+          ctx.fillStyle = obj.color || '#fff';
+          ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+          ctx.strokeStyle = '#000';
+          ctx.strokeRect(obj.x, obj.y, obj.w, obj.h);
+        }
+        ctx.restore();
+      }
+
+      ctx.fillStyle = '#f1c40f';
+      ctx.font = '9px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(obj.name, obj.x + obj.w / 2, obj.y - 4);
+    }
+
+    // Dibujo de Enemigos
+    drawEnemyEntity(ctx, en) {
+      if (this.spriteSheetLoaded) {
+        ctx.drawImage(this.spriteSheet, 32, 32, 32, 32, en.x - 4, en.y - 4, 32, 32);
+        return;
+      }
+
+      ctx.save();
+      if (en.type === 'slime') {
+        // Moco gelatinoso redondeado
+        ctx.fillStyle = en.color;
+        ctx.beginPath();
+        ctx.arc(en.x + 12, en.y + 14, 10, 0, Math.PI * 2);
+        ctx.fill();
+        // Núcleo brillante
+        ctx.fillStyle = '#a8e6cf';
+        ctx.fillRect(en.x + 10, en.y + 12, 4, 4);
+      } else if (en.type === 'ghoul' || en.type === 'swamp_horror') {
+        // Carroñero jorobado con ojos rojos
+        ctx.fillStyle = en.color;
+        ctx.fillRect(en.x + 4, en.y + 6, 16, 18);
+        ctx.fillStyle = '#ff3838'; // Ojos rojos amenazantes
+        ctx.fillRect(en.x + 7, en.y + 9, 2, 2);
+        ctx.fillRect(en.x + 13, en.y + 9, 2, 2);
+        // Garras
+        ctx.fillStyle = '#333';
+        ctx.fillRect(en.x + 2, en.y + 18, 3, 6);
+        ctx.fillRect(en.x + 19, en.y + 18, 3, 6);
+      } else {
+        ctx.fillStyle = en.color;
+        ctx.fillRect(en.x, en.y, 24, 24);
+      }
       ctx.restore();
     }
 
