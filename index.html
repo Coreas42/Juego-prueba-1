@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Aethelgard: Echoes of Soltia</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div id="game-wrapper">
+    <canvas id="gameCanvas" width="640" height="480"></canvas>
+
+    <!-- HUD Superior -->
+    <div id="hud">
+      <div class="hud-stat">
+        <span id="hud-name">Héroe</span> | <span id="hud-class" class="gold-txt">Novato</span>
+      </div>
+      <div class="bar-container">
+        <div id="hp-bar" class="bar hp"></div>
+        <span id="hp-txt" class="bar-txt">100/100</span>
+      </div>
+      <div class="bar-container">
+        <div id="res-bar" class="bar res"></div>
+        <span id="res-txt" class="bar-txt">50/50</span>
+      </div>
+      <div class="hud-sub">
+        <span>NVL: <b id="hud-lvl">1</b></span> | 
+        <span>ORO: <b id="hud-gold" class="gold-txt">0</b></span> | 
+        <span id="hud-time">Día</span>
+      </div>
+      <div class="quick-slots">
+        <span>[Q] Poción: <b id="potion-count">2</b></span> | 
+        <span>[TAB] Menú</span>
+      </div>
+    </div>
+
+    <!-- Notificaciones flotantes -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Cuadro de Diálogo Retro -->
+    <div id="dialog-box" class="ui-panel hidden">
+      <div id="dialog-speaker">NPC</div>
+      <div id="dialog-content">...</div>
+      <div id="dialog-prompt">[Presiona E o Toca para continuar]</div>
+    </div>
+
+    <!-- Menú Principal de Pausa (TAB) -->
+    <div id="pause-menu" class="ui-panel hidden">
+      <div class="menu-tabs">
+        <button class="tab-btn active" data-tab="tab-stats">Personaje</button>
+        <button class="tab-btn" data-tab="tab-inv">Mochila</button>
+        <button class="tab-btn" data-tab="tab-quests">Misiones</button>
+        <button class="tab-btn" data-tab="tab-system">Sistema</button>
+      </div>
+
+      <!-- Pestaña Estadísticas -->
+      <div id="tab-stats" class="tab-content active">
+        <h3 id="stats-title">Hoja de Personaje</h3>
+        <p id="stats-details">Cargando...</p>
+        <div id="stat-allocation" class="hidden">
+          <p class="gold-txt">Puntos disponibles: <span id="stat-points">0</span></p>
+          <div class="stat-row"><span>Fuerza (STR): <b id="stat-str">10</b></span> <button onclick="game.addStat('str')">+</button></div>
+          <div class="stat-row"><span>Destreza (DEX): <b id="stat-dex">10</b></span> <button onclick="game.addStat('dex')">+</button></div>
+          <div class="stat-row"><span>Vitalidad (VIT): <b id="stat-vit">10</b></span> <button onclick="game.addStat('vit')">+</button></div>
+          <div class="stat-row"><span>Inteligencia (INT): <b id="stat-int">10</b></span> <button onclick="game.addStat('int')">+</button></div>
+        </div>
+      </div>
+
+      <!-- Pestaña Inventario -->
+      <div id="tab-inv" class="tab-content">
+        <h3>Inventario</h3>
+        <div id="inventory-grid" class="grid-container"></div>
+        <div id="item-inspect" class="inspect-box">Selecciona un objeto para ver detalles.</div>
+      </div>
+
+      <!-- Pestaña Misiones / Códice -->
+      <div id="tab-quests" class="tab-content">
+        <h3>Registro de Aventuras</h3>
+        <ul id="quest-list"><li>No hay misiones activas.</li></ul>
+        <h3>Títulos Desbloqueados</h3>
+        <div id="title-list"></div>
+      </div>
+
+      <!-- Pestaña Sistema (Exportar / Importar) -->
+      <div id="tab-system" class="tab-content">
+        <h3>Guardado y Portabilidad</h3>
+        <button onclick="game.saveGame(true)">Guardar Manualmente</button>
+        <button onclick="game.exportSave()">Exportar Partida (Texto)</button>
+        <button onclick="game.importSave()">Importar Partida</button>
+        <div style="margin-top: 10px;">
+          <textarea id="save-io" placeholder="Pega aquí el código de guardado..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Interfaz de Baúl Compartido / Tienda / Forja / Pesca -->
+    <div id="stash-modal" class="ui-panel hidden">
+      <h3 id="stash-title">Baúl del Bastión</h3>
+      <div id="stash-grid" class="grid-container"></div>
+      <button onclick="game.closeStash()">Cerrar</button>
+    </div>
+
+    <!-- Controles Táctiles en Pantalla (Móviles / Nothing phone) -->
+    <div id="mobile-controls">
+      <div id="dpad">
+        <button id="btn-up" class="dbtn">▲</button>
+        <div class="dpad-mid">
+          <button id="btn-left" class="dbtn">◀</button>
+          <div class="dpad-center"></div>
+          <button id="btn-right" class="dbtn">▶</button>
+        </div>
+        <button id="btn-down" class="dbtn">▼</button>
+      </div>
+
+      <div id="action-buttons">
+        <button id="btn-potion" class="act-btn btn-sec">Q</button>
+        <button id="btn-dash" class="act-btn btn-sec">DASH</button>
+        <button id="btn-interact" class="act-btn btn-sec">E</button>
+        <button id="btn-attack" class="act-btn btn-main">ATK</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
