@@ -1,0 +1,214 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #0d0e15;
+  color: #e0e6ed;
+  font-family: 'Courier New', Courier, monospace;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#game-wrapper {
+  position: relative;
+  width: 640px;
+  height: 480px;
+  border: 4px solid #3a3f58;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.9);
+  background: #000;
+}
+
+canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
+/* HUD */
+#hud {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(13, 14, 21, 0.85);
+  border: 2px solid #5a6988;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.3;
+  pointer-events: none;
+  width: 170px;
+}
+
+.gold-txt { color: #f1c40f; font-weight: bold; }
+
+.bar-container {
+  position: relative;
+  width: 100%;
+  height: 10px;
+  background: #222;
+  margin: 3px 0;
+  border-radius: 2px;
+  overflow: hidden;
+  border: 1px solid #111;
+}
+
+.bar { height: 100%; width: 100%; transition: width 0.15s; }
+.bar.hp { background: #e74c3c; }
+.bar.res { background: #3498db; }
+
+.bar-txt {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  font-size: 8px;
+  text-align: center;
+  line-height: 10px;
+  color: #fff;
+  font-weight: bold;
+  text-shadow: 1px 1px #000;
+}
+
+/* Paneles UI */
+.ui-panel {
+  position: absolute;
+  background: rgba(16, 20, 31, 0.95);
+  border: 3px solid #d4af37;
+  border-radius: 6px;
+  padding: 12px;
+  z-index: 50;
+}
+
+.hidden { display: none !important; }
+
+#dialog-box {
+  bottom: 15px;
+  left: 20px;
+  right: 20px;
+  min-height: 80px;
+}
+
+#dialog-speaker {
+  color: #f1c40f;
+  font-weight: bold;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+#dialog-content { font-size: 12px; line-height: 1.4; color: #f0f3f6; }
+#dialog-prompt { font-size: 10px; color: #8c9ba5; text-align: right; margin-top: 6px; }
+
+#pause-menu, #stash-modal {
+  top: 20px;
+  left: 20px;
+  right: 20px;
+  bottom: 20px;
+  overflow-y: auto;
+}
+
+.menu-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.tab-btn {
+  background: #252d42;
+  border: 1px solid #5a6988;
+  color: #ccc;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-family: monospace;
+}
+
+.tab-btn.active {
+  background: #d4af37;
+  color: #111;
+  font-weight: bold;
+}
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.grid-cell {
+  background: #1a2030;
+  border: 1px solid #444;
+  height: 45px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.grid-cell:hover { border-color: #d4af37; }
+
+.inspect-box {
+  margin-top: 10px;
+  background: #111522;
+  border: 1px solid #555;
+  padding: 8px;
+  font-size: 11px;
+  min-height: 50px;
+}
+
+.toast {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: rgba(0,0,0,0.85);
+  border: 1px solid #f1c40f;
+  color: #fff;
+  padding: 6px 10px;
+  font-size: 11px;
+  border-radius: 4px;
+  display: none;
+  z-index: 60;
+}
+
+/* Controles Táctiles */
+#mobile-controls {
+  display: none;
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  right: 10px;
+  pointer-events: none;
+}
+
+@media (pointer: coarse), (max-width: 700px) {
+  #mobile-controls { display: flex; justify-content: space-between; align-items: flex-end; }
+  #game-wrapper { width: 100vw; height: 100vh; border: none; }
+}
+
+#dpad, #action-buttons { pointer-events: auto; }
+
+.dbtn, .act-btn {
+  background: rgba(40, 45, 65, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  color: #fff;
+  border-radius: 8px;
+  font-weight: bold;
+}
+
+.dbtn { width: 42px; height: 42px; }
+.dpad-mid { display: flex; justify-content: center; gap: 42px; }
+.act-btn { width: 50px; height: 50px; margin-left: 6px; border-radius: 50%; }
+.btn-main { background: rgba(212, 175, 55, 0.7); width: 60px; height: 60px; }
+textarea { width: 100%; height: 50px; background: #111; color: #0f0; font-size: 10px; }
