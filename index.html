@@ -7,117 +7,150 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-  <div id="game-wrapper">
+  <div id="game-container">
     <canvas id="gameCanvas" width="640" height="480"></canvas>
 
-    <!-- HUD Superior -->
+    <!-- HUD SUPERIOR -->
     <div id="hud">
-      <div class="hud-stat">
-        <span id="hud-name">Héroe</span> | <span id="hud-class" class="gold-txt">Novato</span>
-      </div>
-      <div class="bar-container">
-        <div id="hp-bar" class="bar hp"></div>
-        <span id="hp-txt" class="bar-txt">100/100</span>
-      </div>
-      <div class="bar-container">
-        <div id="res-bar" class="bar res"></div>
-        <span id="res-txt" class="bar-txt">50/50</span>
-      </div>
-      <div class="hud-sub">
-        <span>NVL: <b id="hud-lvl">1</b></span> | 
-        <span>ORO: <b id="hud-gold" class="gold-txt">0</b></span> | 
-        <span id="hud-time">Día</span>
-      </div>
-      <div class="quick-slots">
-        <span>[Q] Poción: <b id="potion-count">2</b></span> | 
-        <span>[TAB] Menú</span>
-      </div>
-    </div>
-
-    <!-- Notificaciones flotantes -->
-    <div id="toast" class="toast"></div>
-
-    <!-- Cuadro de Diálogo Retro -->
-    <div id="dialog-box" class="ui-panel hidden">
-      <div id="dialog-speaker">NPC</div>
-      <div id="dialog-content">...</div>
-      <div id="dialog-prompt">[Presiona E o Toca para continuar]</div>
-    </div>
-
-    <!-- Menú Principal de Pausa (TAB) -->
-    <div id="pause-menu" class="ui-panel hidden">
-      <div class="menu-tabs">
-        <button class="tab-btn active" data-tab="tab-stats">Personaje</button>
-        <button class="tab-btn" data-tab="tab-inv">Mochila</button>
-        <button class="tab-btn" data-tab="tab-quests">Misiones</button>
-        <button class="tab-btn" data-tab="tab-system">Sistema</button>
-      </div>
-
-      <!-- Pestaña Estadísticas -->
-      <div id="tab-stats" class="tab-content active">
-        <h3 id="stats-title">Hoja de Personaje</h3>
-        <p id="stats-details">Cargando...</p>
-        <div id="stat-allocation" class="hidden">
-          <p class="gold-txt">Puntos disponibles: <span id="stat-points">0</span></p>
-          <div class="stat-row"><span>Fuerza (STR): <b id="stat-str">10</b></span> <button onclick="game.addStat('str')">+</button></div>
-          <div class="stat-row"><span>Destreza (DEX): <b id="stat-dex">10</b></span> <button onclick="game.addStat('dex')">+</button></div>
-          <div class="stat-row"><span>Vitalidad (VIT): <b id="stat-vit">10</b></span> <button onclick="game.addStat('vit')">+</button></div>
-          <div class="stat-row"><span>Inteligencia (INT): <b id="stat-int">10</b></span> <button onclick="game.addStat('int')">+</button></div>
+      <div class="hud-stat-box">
+        <div class="hud-row">
+          <span id="hud-name" class="gold-txt">Francisco</span>
+          <span id="hud-class" class="badge">Novato</span>
+          <span class="hud-time-tag">Hora: <span id="hud-time">Día</span></span>
         </div>
-      </div>
-
-      <!-- Pestaña Inventario -->
-      <div id="tab-inv" class="tab-content">
-        <h3>Inventario</h3>
-        <div id="inventory-grid" class="grid-container"></div>
-        <div id="item-inspect" class="inspect-box">Selecciona un objeto para ver detalles.</div>
-      </div>
-
-      <!-- Pestaña Misiones / Códice -->
-      <div id="tab-quests" class="tab-content">
-        <h3>Registro de Aventuras</h3>
-        <ul id="quest-list"><li>No hay misiones activas.</li></ul>
-        <h3>Títulos Desbloqueados</h3>
-        <div id="title-list"></div>
-      </div>
-
-      <!-- Pestaña Sistema (Exportar / Importar) -->
-      <div id="tab-system" class="tab-content">
-        <h3>Guardado y Portabilidad</h3>
-        <button onclick="game.saveGame(true)">Guardar Manualmente</button>
-        <button onclick="game.exportSave()">Exportar Partida (Texto)</button>
-        <button onclick="game.importSave()">Importar Partida</button>
-        <div style="margin-top: 10px;">
-          <textarea id="save-io" placeholder="Pega aquí el código de guardado..."></textarea>
+        <div class="bar-container">
+          <div id="hp-bar" class="bar-fill hp-fill"></div>
+          <span id="hp-txt" class="bar-label">100/100</span>
+        </div>
+        <div class="bar-container">
+          <div id="res-bar" class="bar-fill res-fill"></div>
+          <span id="res-txt" class="bar-label">50/50</span>
+        </div>
+        <div class="hud-footer">
+          <span>NVL: <b id="hud-lvl">1</b></span>
+          <span>ORO: <b id="hud-gold" class="gold-txt">40</b></span>
+          <span>[Q] Poción: <b id="potion-count">3</b></span>
+          <button id="btn-open-menu" class="hud-btn" onclick="game.togglePauseMenu()">[TAB] Menú</button>
         </div>
       </div>
     </div>
 
-    <!-- Interfaz de Baúl Compartido / Tienda / Forja / Pesca -->
-    <div id="stash-modal" class="ui-panel hidden">
-      <h3 id="stash-title">Baúl del Bastión</h3>
-      <div id="stash-grid" class="grid-container"></div>
-      <button onclick="game.closeStash()">Cerrar</button>
+    <!-- NOTIFICACIONES TOAST -->
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- DIÁLOGOS -->
+    <div id="dialog-box" class="dialog-box hidden">
+      <div class="dialog-header">
+        <span id="dialog-speaker" class="gold-txt">Interlocutor</span>
+        <button class="close-btn" onclick="game.closeDialog()">✕</button>
+      </div>
+      <div id="dialog-content" class="dialog-content"></div>
+      <div id="dialog-actions" class="dialog-actions"></div>
     </div>
 
-    <!-- Controles Táctiles en Pantalla (Móviles / Nothing phone) -->
-    <div id="mobile-controls">
-      <div id="dpad">
-        <button id="btn-up" class="dbtn">▲</button>
-        <div class="dpad-mid">
-          <button id="btn-left" class="dbtn">◀</button>
-          <div class="dpad-center"></div>
-          <button id="btn-right" class="dbtn">▶</button>
+    <!-- MENÚ PRINCIPAL / PAUSA -->
+    <div id="pause-menu" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2>Registro del Bastión</h2>
+          <button class="close-btn" onclick="game.togglePauseMenu()">✕</button>
         </div>
-        <button id="btn-down" class="dbtn">▼</button>
-      </div>
+        
+        <div class="tabs-nav">
+          <button class="tab-btn active" data-tab="tab-inventory">Mochila y Equipo</button>
+          <button class="tab-btn" data-tab="tab-stats">Atributos</button>
+          <button class="tab-btn" data-tab="tab-save">Guardado / Datos</button>
+        </div>
 
-      <div id="action-buttons">
-        <button id="btn-potion" class="act-btn btn-sec">Q</button>
-        <button id="btn-dash" class="act-btn btn-sec">DASH</button>
-        <button id="btn-interact" class="act-btn btn-sec">E</button>
-        <button id="btn-attack" class="act-btn btn-main">ATK</button>
+        <!-- PESTAÑA INVENTARIO -->
+        <div id="tab-inventory" class="tab-content active">
+          <div class="inventory-layout">
+            <!-- SLOTS DE EQUIPO LATERALES -->
+            <div class="equipment-slots">
+              <h3>Equipo Vestido</h3>
+              <div class="equip-slot" onclick="game.unequipSlot('weapon')">
+                <span class="slot-title">Arma Principal:</span>
+                <span id="slot-weapon" class="slot-value">[Vacío]</span>
+              </div>
+              <div class="equip-slot" onclick="game.unequipSlot('armor')">
+                <span class="slot-title">Protección:</span>
+                <span id="slot-armor" class="slot-value">[Vacío]</span>
+              </div>
+              <div class="equip-slot" onclick="game.unequipSlot('accessory')">
+                <span class="slot-title">Amuleto / Reliquia:</span>
+                <span id="slot-accessory" class="slot-value">[Vacío]</span>
+              </div>
+              <p class="hint-txt">Doble clic en la mochila para equipar. Clic en un slot para desequipar.</p>
+            </div>
+
+            <!-- CUADRÍCULA DE MOCHILA -->
+            <div class="inventory-bag">
+              <div class="filter-bar">
+                <button class="filter-btn active" onclick="game.setInventoryFilter('all')">Todos</button>
+                <button class="filter-btn" onclick="game.setInventoryFilter('equip')">Equipo</button>
+                <button class="filter-btn" onclick="game.setInventoryFilter('consumable')">Consumibles</button>
+                <button class="filter-btn" onclick="game.setInventoryFilter('material')">Materiales</button>
+              </div>
+              <div id="inventory-grid" class="item-grid"></div>
+              <div id="item-inspect" class="item-details">
+                <i>Selecciona un ítem de tu inventario para ver detalles.</i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PESTAÑA ATRIBUTOS -->
+        <div id="tab-stats" class="tab-content">
+          <h3 id="stats-title">Francisco - Novato Errante</h3>
+          <p id="stats-details"></p>
+          <div id="stat-allocation" class="stat-box hidden">
+            <p>Puntos libres: <b id="stat-points" class="gold-txt">0</b></p>
+            <div class="stat-row">Fuerza: <span id="stat-str">8</span> <button class="btn-stat" onclick="game.addStat('str')">+</button></div>
+            <div class="stat-row">Destreza: <span id="stat-dex">8</span> <button class="btn-stat" onclick="game.addStat('dex')">+</button></div>
+            <div class="stat-row">Vitalidad: <span id="stat-vit">8</span> <button class="btn-stat" onclick="game.addStat('vit')">+</button></div>
+            <div class="stat-row">Intelecto: <span id="stat-int">8</span> <button class="btn-stat" onclick="game.addStat('int')">+</button></div>
+          </div>
+        </div>
+
+        <!-- PESTAÑA GUARDADO -->
+        <div id="tab-save" class="tab-content">
+          <h3>Gestión de Progreso</h3>
+          <p>La partida se autoguarda automáticamente, pero puedes forzar un respaldo o copiar tu código para jugarlo en el celular.</p>
+          <div class="save-actions">
+            <button class="tab-btn" onclick="game.saveGame(true)">Guardar Manual</button>
+            <button class="tab-btn" onclick="game.exportSave()">Exportar a Código</button>
+            <button class="tab-btn" onclick="game.importSave()">Cargar desde Código</button>
+          </div>
+          <textarea id="save-io" placeholder="Pega aquí tu código de guardado o pulsa Exportar para generarlo..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL BAÚL / STASH -->
+    <div id="stash-modal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2>Baúl Compartido del Bastión</h2>
+          <button class="close-btn" onclick="game.closeStash()">✕</button>
+        </div>
+        <p class="hint-txt">Haz clic en un objeto para transferirlo a tu mochila.</p>
+        <div id="stash-grid" class="item-grid"></div>
+      </div>
+    </div>
+
+    <!-- CONTROLES TÁCTILES MÓVILES -->
+    <div id="touch-controls">
+      <div class="dpad">
+        <button id="btn-up" class="t-btn dpad-up">▲</button>
+        <button id="btn-left" class="t-btn dpad-left">◀</button>
+        <button id="btn-down" class="t-btn dpad-down">▼</button>
+        <button id="btn-right" class="t-btn dpad-right">▶</button>
+      </div>
+      <div class="action-buttons">
+        <button id="btn-attack" class="t-btn act-atk">⚔</button>
+        <button id="btn-dash" class="t-btn act-dash">⚡</button>
+        <button id="btn-interact" class="t-btn act-e">E</button>
+        <button id="btn-potion" class="t-btn act-pot">Q</button>
       </div>
     </div>
   </div>
